@@ -5,9 +5,13 @@ from .models import Expense
 
 class ExpenseSerializer(serializers.ModelSerializer):
 
+    # user = serializers.PrimaryKeyRelatedField(read_only=True) alternatif
+
     class Meta:
         model = Expense
         fields = '__all__'
+
+        read_only_fields = ['user']  # 'user' alanı sadece okunabilir olacak
 
     def validate_amount(self, value):
         """
