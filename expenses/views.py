@@ -6,15 +6,19 @@ from .models import Category, Expense
 from .services import ExpenseAnalytics  
 from .serializers import ExpenseSerializer
 from django.shortcuts import get_object_or_404
+from drf_yasg.utils import swagger_auto_schema
 
 class ExpenseListAPI(APIView):
     """
-    /expenses/ endpointi için GET ve POST işlemleri
+    
     """
 
     permission_classes = [IsAuthenticated]  # Sadece yetkili kullanıcılar erişebilir
 
     def get(self, request):
+        """
+        /expenses/ endpointi için GET işlemi
+        """
         print("GET istegi alindi.")
         # veritabanindan tum harcamalar cekildi
 
@@ -23,7 +27,11 @@ class ExpenseListAPI(APIView):
         serializer = ExpenseSerializer(expenses, many=True)
         return Response(serializer.data)
     
+    @swagger_auto_schema(request_body=ExpenseSerializer)
     def post(self, request):
+        """
+        /expenses/ endpointi için POST işlemi
+        """
         # Gelen veri serializer'e verildi
         serializer = ExpenseSerializer(data=request.data)
         # Serializer gecerliligi kontrol edildi
@@ -55,10 +63,7 @@ class ExpenseStatsAPI(APIView):
         })
 
 class ExpenseDetailAPI(APIView):
-    """
-    /expenses/delete/<id>/ endpointi için DELETE işlemi
     
-    """
     permission_classes = [IsAuthenticated] # Sadece yetkili kullanıcılar erişebilir
 
     def get_object(self, id, user):
@@ -67,12 +72,18 @@ class ExpenseDetailAPI(APIView):
         return obj
     
     def get(self, request, id):
-        
+        """
+        /expenses/<id>/ endpointi ile detail GET işlemi
+        """
         expense = self.get_object(id, request.user)
         serializer = ExpenseSerializer(expense)
         return Response(serializer.data)
     
+    @swagger_auto_schema(request_body=ExpenseSerializer)
     def put(self, request, id):
+        """
+        /expenses/<id>/ endpointi için PUT işlemi
+        """
         
         expense = self.get_object(id, request.user)
         serializer = ExpenseSerializer(instance=expense, data=request.data)
@@ -84,6 +95,9 @@ class ExpenseDetailAPI(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     def delete(self, request, id):
+        """
+        /expenses/<id>/ endpointi için DELETE işlemi
+        """
         expense = self.get_object(id, request.user)
         expense.delete()
         return Response({"Message": "Harcama başarıyla silindi!"}, status=status.HTTP_204_NO_CONTENT)
