@@ -7,11 +7,10 @@ from .services import ExpenseAnalytics
 from .serializers import ExpenseSerializer
 from django.shortcuts import get_object_or_404
 from drf_yasg.utils import swagger_auto_schema
+from .tasks import heavy_process_simulation
+from celery.result import AsyncResult
 
 class ExpenseListAPI(APIView):
-    """
-    
-    """
 
     permission_classes = [IsAuthenticated]  # Sadece yetkili kullanıcılar erişebilir
 
@@ -102,3 +101,29 @@ class ExpenseDetailAPI(APIView):
         expense.delete()
         return Response({"Message": "Harcama başarıyla silindi!"}, status=status.HTTP_204_NO_CONTENT)
 
+class ExpenseReportAPI(APIView):
+    
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        duration = request.data.get('duration', 10) # Varsayılan olarak son 10
+        tasks = heavy_process_simulation.delay(duration=duration)
+
+        return Response({
+            "message": "Rapor oluşturma talebi alındı. Arka planda işleniyor.",
+            "task_id": tasks.id, # Task ID'si. Bununla durum sorgulanabilir.
+            "status:": tasks.status,
+        }, status=status.HTTP_202_ACCEPTED)
+    
+class ExpenseTaskStatusAPI(APIView):
+
+    def get(self, request, task_id):
+        task_result = AsyncResult(id=task_id)
+
+        result = {
+            "task_id": task_id,
+            "status": task_result.status,
+            "result": task_result.result if task_result.ready() else None # Eğer görev tamamlandıysa sonucu döndür.
+        }
+        return Response(result)
+    

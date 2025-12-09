@@ -107,3 +107,16 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+# --- CELERY AYARLARI ---
+
+# Mesajları taşıyacak broker (Redis) URL'si
+CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
+
+# Sonuçların saklanacağı backend (Redis) URL'si
+CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379/0'
+
+# Saat dilimi ayarı
+CELERY_TIMEZONE = 'Europe/Istanbul'
+
