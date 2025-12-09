@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  # --- 1. REDIS (Mesaj Panosu) ---
+  redis:
+    image: redis:alpine
+    container_name: expense_redis
+    ports:
+      - "6379:6379"
+
+  # --- 2. DJANGO (API Sunucusu) ---
+  web:
+    build: .
+    container_name: expense_django
+    # 0.0.0.0 adresi dışarıdan erişime izin verir
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app  # Kodunu canlı senkronize eder (Hot Reload)
+    ports:
+      - "8000:8000"
+    # Docker içindeyken Redis adresini buradan alacak:
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis # Redis açılmadan Django başlamasın
+
+  # --- 3. CELERY (Arka Plan İşçisi) ---
+  celery:
+    build: .
+    container_name: expense_celery
+    command: celery -A config worker -l info
+    volumes:
+      - .:/app
+    # Celery de Redis'in yerini bilmeli:
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
+      - web

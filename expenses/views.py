@@ -1,129 +1,73 @@
-from rest_framework.views import APIView  
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework import status       
-from rest_framework.permissions import IsAuthenticated # Yetki kontrolü
-from .models import Category, Expense         
-from .services import ExpenseAnalytics  
-from .serializers import ExpenseSerializer
-from django.shortcuts import get_object_or_404
+from rest_framework.permissions import IsAuthenticated
 from drf_yasg.utils import swagger_auto_schema
-from .tasks import heavy_process_simulation
 from celery.result import AsyncResult
 
-class ExpenseListAPI(APIView):
+from .models import Expense
+from .serializers import ExpenseSerializer
+from .services import ExpenseAnalytics
+from .tasks import heavy_process_simulation
 
-    permission_classes = [IsAuthenticated]  # Sadece yetkili kullanıcılar erişebilir
-
-    def get(self, request):
-        """
-        /expenses/ endpointi için GET işlemi
-        """
-        print("GET istegi alindi.")
-        # veritabanindan tum harcamalar cekildi
-
-        # Sadece giriş yapan kullanıcının verileri
-        expenses = Expense.objects.filter(user=request.user)
-        serializer = ExpenseSerializer(expenses, many=True)
-        return Response(serializer.data)
-    
-    @swagger_auto_schema(request_body=ExpenseSerializer)
-    def post(self, request):
-        """
-        /expenses/ endpointi için POST işlemi
-        """
-        # Gelen veri serializer'e verildi
-        serializer = ExpenseSerializer(data=request.data)
-        # Serializer gecerliligi kontrol edildi
-        if serializer.is_valid():
-            # Kaydederken user bilgisi ekleme işlemi
-            serializer.save(user=request.user)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-            
-class ExpenseStatsAPI(APIView):
+class ExpenseViewSet(viewsets.ModelViewSet):
     """
-    /expenses/stats/ endpointi için GET işlemi (Filtereleme ve istatistik)
-    """
-
-    permission_classes = [IsAuthenticated]  # Sadece yetkili kullanıcılar erişebilir
-
-    def get(self, request):
-        
-        engine = ExpenseAnalytics(user=request.user) # Class ile nesne oluşturma işlemi
-        filtered_expenses = engine.get_filtered_expense(request.query_params) # Filtreleme işlemi
-        stats = engine.calculate_stats(filtered_expenses) # İstatistik hesaplama işlemi
-        
-        return Response({
-            **stats, # Dictionary unpacking işlemi. (Sözlüğü açıp dökme işlemi.)
-
-            # Stats sözlüğü ve serialized data'yı birleştirip değer döndürme işlemi.
-            "expenses": ExpenseSerializer(filtered_expenses, many=True).data 
-        })
-
-class ExpenseDetailAPI(APIView):
-    
-    permission_classes = [IsAuthenticated] # Sadece yetkili kullanıcılar erişebilir
-
-    def get_object(self, id, user):
-
-        obj = get_object_or_404(Expense, id=id, user=user)
-        return obj
-    
-    def get(self, request, id):
+        Bu ViewSet; Listeleme, Ekleme, Detay, Güncelleme ve Silme 
+        işlemlerinin hepsini otomatik yapar.
+        Ekstra olarak: İstatistik ve Raporlama endpointlerini de barındırır.
         """
-        /expenses/<id>/ endpointi ile detail GET işlemi
-        """
-        expense = self.get_object(id, request.user)
-        serializer = ExpenseSerializer(expense)
-        return Response(serializer.data)
-    
-    @swagger_auto_schema(request_body=ExpenseSerializer)
-    def put(self, request, id):
-        """
-        /expenses/<id>/ endpointi için PUT işlemi
-        """
-        
-        expense = self.get_object(id, request.user)
-        serializer = ExpenseSerializer(instance=expense, data=request.data)
-        # Güncelleme işleminde 'instance' parametresi verilir.
-
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-    def delete(self, request, id):
-        """
-        /expenses/<id>/ endpointi için DELETE işlemi
-        """
-        expense = self.get_object(id, request.user)
-        expense.delete()
-        return Response({"Message": "Harcama başarıyla silindi!"}, status=status.HTTP_204_NO_CONTENT)
-
-class ExpenseReportAPI(APIView):
-    
+    serializer_class = ExpenseSerializer
     permission_classes = [IsAuthenticated]
 
-    def post(self, request):
-        duration = request.data.get('duration', 10) # Varsayılan olarak son 10
-        tasks = heavy_process_simulation.delay(duration=duration)
+    # Kullanıcı sadece kendi verisini görecek.
+    def get_queryset(self):
+        
+        # Eğer bu metod swagger şema oluşturucu tarafından çağrılıyorsa
+        if getattr(self, 'swagger_fake_view', False):
+            # Boş bir queryset dön, Swagger sadece model yapısına bakar, veriye ihtiyaç duymaz.
+            return Expense.objects.none()
+            # Gerçek requestte çalışacak.
+        return Expense.objects.filter(user=self.request.user)
+    
+    # Kaydederken kullanıcıyı otomatik ekle.
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user) 
 
+    # İstatistik endpoint'i
+    # detail=False: Tekbir ID'ye değil, listenin geneline uygulanır.
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        engine = ExpenseAnalytics(user=request.user)
+        expenses = engine.get_filtered_expense(request.query_params)
+        stats = engine.calculate_stats(expenses)
+        return Response(
+            {
+
+            **stats,
+            "expenses": ExpenseSerializer(expenses, many=True).data
+    })
+
+    # Rapor oluşturma endpoint'i
+    @swagger_auto_schema(operation_description="Rapor oluşturma işlemini başlatır ve görev ID'sini döner.")
+    @action(detail=False, methods=['post'])
+    def report(self, request):
+        engine = ExpenseAnalytics(user=request.user)
+        duration = request.data.get("duration", 10)  # Simülasyon süresi
+        task = heavy_process_simulation.delay(duration)
         return Response({
-            "message": "Rapor oluşturma talebi alındı. Arka planda işleniyor.",
-            "task_id": tasks.id, # Task ID'si. Bununla durum sorgulanabilir.
-            "status:": tasks.status,
+            "message": "Rapor oluşturma talebi alındı.",
+            "task_id": task.id,
+            "status": "processing"
         }, status=status.HTTP_202_ACCEPTED)
     
-class ExpenseTaskStatusAPI(APIView):
-
-    def get(self, request, task_id):
-        task_result = AsyncResult(id=task_id)
-
+    # Görev durumu kontrol endpoint'i
+    @action(detail=False, methods=['get'], url_path='check-task/(?P<task_id>[^/.]+)')
+    def check_task(self, request, task_id=None):
+        task_result = AsyncResult(task_id)
         result = {
             "task_id": task_id,
-            "status": task_result.status,
-            "result": task_result.result if task_result.ready() else None # Eğer görev tamamlandıysa sonucu döndür.
+            "status": task_result.state,
+            "result": task_result.result if task_result.ready() else None
         }
         return Response(result)
-    
+

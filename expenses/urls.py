@@ -1,11 +1,11 @@
 from django.urls import path, include
-from .views import ExpenseListAPI, ExpenseStatsAPI, ExpenseDetailAPI, ExpenseReportAPI, ExpenseTaskStatusAPI
+from rest_framework.routers import DefaultRouter
+from .views import ExpenseViewSet
+
+router = DefaultRouter()
+router.register(r'', ExpenseViewSet, basename='expense')
 
 urlpatterns = [
-    path('', ExpenseListAPI.as_view(), name="expense-list"),
-    path('stats/', ExpenseStatsAPI.as_view(), name="expense-stats"),
-    path('<int:id>/', ExpenseDetailAPI.as_view(), name="expense-detail"),
-    path('report/', ExpenseReportAPI.as_view(), name="expense-report"),
-    path('tasks/<str:task_id>/', ExpenseTaskStatusAPI.as_view(), name="task-status"),
-    
+    path('', include(router.urls)),
 ]
+
