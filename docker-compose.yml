@@ -25,7 +25,7 @@ services:
     depends_on:
       - redis # Redis açılmadan Django başlamasın
 
-  # --- 3. CELERY (Arka Plan İşçisi) ---
+  # --- 3. CELERY (Async işlemler) ---
   celery:
     build: .
     container_name: expense_celery
@@ -39,3 +39,15 @@ services:
     depends_on:
       - redis
       - web
+
+  # --- 4. FASTAPI (AI Mikroservisi - Port 8001) ---
+  ai_service:
+    build: 
+      context: ./ai_service # ai_service Dockerfile'ı klasörü
+    container_name: expense_ai_service
+    # Uvicorn sunucusunu 8001 portunda başlayacak
+    command: uvicorn main:app --host 0.0.0.0 --port 8001 --reload
+    volumes:
+      - ./ai_service:/app # Sadece ai_service klasörünü senkronize edilecek
+    ports:
+      - "8001:8001" # Dışarıya 8001 portundan açma işlemi

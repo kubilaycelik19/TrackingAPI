@@ -11,11 +11,6 @@ from .services import ExpenseAnalytics
 from .tasks import heavy_process_simulation
 
 class ExpenseViewSet(viewsets.ModelViewSet):
-    """
-        Bu ViewSet; Listeleme, Ekleme, Detay, Güncelleme ve Silme 
-        işlemlerinin hepsini otomatik yapar.
-        Ekstra olarak: İstatistik ve Raporlama endpointlerini de barındırır.
-        """
     serializer_class = ExpenseSerializer
     permission_classes = [IsAuthenticated]
 
@@ -69,5 +64,20 @@ class ExpenseViewSet(viewsets.ModelViewSet):
             "status": task_result.state,
             "result": task_result.result if task_result.ready() else None
         }
+        return Response(result)
+    
+    # Yapay zeka ile fiş analizi endpoint'i
+    @action(detail=False, methods=['post'])
+    def analyze_receipt(self, request):
+        # Kullanıcıdan resim url'si isteme işlemi
+        image_url = request.data.get('image_url')
+
+        if not image_url:
+            return Response({"error": "image_url zorunludur."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Servis katmanı çağırma işlemi
+        engine = ExpenseAnalytics(request.user)
+        result = engine.analyze_receipt_via_fastapi(image_url)
+
         return Response(result)
 
