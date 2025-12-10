@@ -5,8 +5,8 @@ from rest_framework.permissions import IsAuthenticated
 from drf_yasg.utils import swagger_auto_schema
 from celery.result import AsyncResult
 
-from .models import Expense
-from .serializers import ExpenseSerializer
+from .models import Expense, Category
+from .serializers import ExpenseSerializer, ReceiptAnalysisSerializer
 from .services import ExpenseAnalytics
 from .tasks import heavy_process_simulation
 
@@ -67,17 +67,56 @@ class ExpenseViewSet(viewsets.ModelViewSet):
         return Response(result)
     
     # Yapay zeka ile fiş analizi endpoint'i
+    @swagger_auto_schema(
+        method='post',
+        request_body=ReceiptAnalysisSerializer,
+        responses={201: ExpenseSerializer} # Başarılı olursa oluşturulan objeyi dön
+    )
     @action(detail=False, methods=['post'])
     def analyze_receipt(self, request):
-        # Kullanıcıdan resim url'si isteme işlemi
-        image_url = request.data.get('image_url')
-
-        if not image_url:
-            return Response({"error": "image_url zorunludur."}, status=status.HTTP_400_BAD_REQUEST)
+        # Artık veriyi serializer üzerinden alıp doğrulayabiliriz (Daha güvenli)
+        serializer = ReceiptAnalysisSerializer(data=request.data)
         
-        # Servis katmanı çağırma işlemi
-        engine = ExpenseAnalytics(request.user)
-        result = engine.analyze_receipt_via_fastapi(image_url)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        image_url = serializer.validated_data['image_url']
 
-        return Response(result)
+        # Servis katmanındaki FastAPI Servisi
+        engine = ExpenseAnalytics(request.user)
+        ai_result = engine.analyze_receipt_via_fastapi(image_url)
+        
+        # Hata kontrolü
+        if "error" in ai_result:
+            return Response(ai_result, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        
+        # Otomatik kayıt
+        try:
+            # Varsayılan kategoriyi bul veya oluştur.
+            category, created = Category.objects.get_or_create(name="AI Taraması")
+
+            total_amount = ai_result.get("total_amount", 0)
+            merchant = ai_result.get("merchant", "Bilinmiyor")
+            date_str = ai_result.get("detected_date", "2025-01-01")
+
+            # Gelen verilerle harcama oluştur
+            new_expense = Expense.objects.create(
+                user=request.user,
+                category=category,
+                amount=total_amount,
+                description=f"Fiş: {merchant}",
+                date=date_str
+            )
+
+            return Response(
+                ExpenseSerializer(new_expense).data,
+                status=status.HTTP_201_CREATED
+            )
+        
+        except Exception as e:
+            return Response(
+                {"error": f"Otomatik kayıt sırasında hata {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
 

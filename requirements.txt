@@ -10,3 +10,5 @@ Pillow
 sqlparse
 typing_extensions
 pytz
+sqlalchemy
+pydantic

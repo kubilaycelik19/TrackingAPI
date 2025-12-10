@@ -21,5 +21,8 @@ class ExpenseSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Hatali deger!")
         else: return value
 
+class ReceiptAnalysisSerializer(serializers.Serializer):
+    image_url = serializers.CharField(required=True, help_text="Analiz edilecek fişin URL'i veya dosya yolu")
+
 
 
