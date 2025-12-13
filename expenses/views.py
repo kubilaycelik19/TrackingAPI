@@ -19,6 +19,13 @@ class ExpenseViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        # Swagger şema oluştururken veya anonim isteklerde hata vermemeli
+        if getattr(self, 'swagger_fake_view', False):
+            return Expense.objects.none()
+            
+        if self.request.user.is_anonymous:
+             return Expense.objects.none()
+             
         return Expense.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
