@@ -13,3 +13,5 @@ pytz
 sqlalchemy
 pydantic
 python-dotenv
+gunicorn
+whitenoise

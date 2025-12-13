@@ -19,7 +19,7 @@ class ExpenseAnalytics:
             files = {'file': (image_file.name, image_file, image_file.content_type)}
             
             # files parametresi ile gönderince requests otomatik header ayarlar
-            response = requests.post(fastapi_url, files=files, timeout=10)
+            response = requests.post(fastapi_url, files=files, timeout=100)
             
             if response.status_code == 200:
                 return response.json()

@@ -1,4 +1,5 @@
 services:
+  # --- DJANGO WEB SERVİSİ ---
   - type: web
     name: expense-django
     runtime: python
@@ -7,7 +8,7 @@ services:
       python manage.py collectstatic --noinput
       python manage.py migrate
       python manage.py create_superuser
-    startCommand: gunicorn my_finance_project.wsgi:application --bind 0.0.0.0:$PORT
+    startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.10.0
@@ -21,16 +22,31 @@ services:
         fromDatabase:
           name: expense-db
           property: connectionString
+      # AI Servisinin adresi (İsim ve Port Sabit)
       - key: AI_SERVICE_URL
-        fromService:
-          type: web
-          name: expense-ai-service
-          property: url
-          
-      # --- DEMO KULLANICI BİLGİLERİ ---
+        value: http://expense-ai-service:10000
+      
+      # Demo Kullanıcı Bilgileri
       - key: DJANGO_SUPERUSER_USERNAME
         value: "demo"
       - key: DJANGO_SUPERUSER_PASSWORD
         value: "demo123"
       - key: DJANGO_SUPERUSER_EMAIL
         value: "demo@example.com"
+
+  # --- FASTAPI (AI) SERVİSİ ---
+  - type: web
+    name: expense-ai-service
+    runtime: docker
+    dockerContext: ./ai_service
+    dockerfilePath: ./ai_service/Dockerfile
+    envVars:
+      - key: PORT
+        value: 10000
+
+databases:
+  # --- POSTGRESQL VERİTABANI ---
+  - name: expense-db
+    databaseName: expense_db
+    user: expense_user
+    plan: free
