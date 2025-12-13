@@ -1,0 +1,40 @@
+name: Django CI Pipeline
+
+# Trigger. 'main' branchına her kod gönderildiğinde çalışacak.
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+# Görevler
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest # sanal ortamın işletim sistemi
+
+    steps: 
+      # Kodu github'dan çek (checkout)
+      -name: Kodu çek
+      uses: actions/checkout@v3
+
+      # Python kur
+      -name: Python 3.10 Kur
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+      # Kütüphaneleri yükle
+      -name: Gereksinimleri yükle
+      uses: python -m pip install --upgrade pip
+      pip install -r requirements.txt
+
+      # Testleri çalıştır
+      -name: Testleri Çalıştır
+        env:
+          SECRET_KEY: "django-insecure-7a688+z1zb4^^(hxtywbi+sv=!*(el36xrcy7$nmz&eyw*ktqg" 
+          DEBUG: "True"
+          CELERY_BROKER_URL: "redis://localhost:6379/0"
+        run:
+          python manage.py test
