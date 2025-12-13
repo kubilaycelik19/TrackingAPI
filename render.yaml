@@ -8,7 +8,7 @@ services:
       python manage.py collectstatic --noinput
       python manage.py migrate
       python manage.py create_superuser
-    startCommand: gunicorn my_finance_project.wsgi:application --bind 0.0.0.0:$PORT
+    startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.10.0
