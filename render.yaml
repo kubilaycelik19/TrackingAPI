@@ -1,5 +1,5 @@
 services:
-  # --- 1. DJANGO WEB SERVİSİ ---
+  # --- DJANGO WEB SERVİSİ ---
   - type: web
     name: expense-django
     runtime: python
@@ -22,13 +22,9 @@ services:
         fromDatabase:
           name: expense-db
           property: connectionString
-      # --- DÜZELTİLEN KISIM BAŞLANGIÇ ---
-      # Hata veren 'fromService' bloğunu kaldırdık.
-      # Render'da servisler isimleriyle çağrılabilir.
-      # FastAPI servisine 'expense-ai-service' adını verdiğimiz için adresi bellidir:
+      # AI Servisinin adresi (İsim ve Port Sabit)
       - key: AI_SERVICE_URL
         value: http://expense-ai-service:10000
-      # --- DÜZELTİLEN KISIM BİTİŞ ---
       
       # Demo Kullanıcı Bilgileri
       - key: DJANGO_SUPERUSER_USERNAME
@@ -44,8 +40,6 @@ services:
     runtime: docker
     dockerContext: ./ai_service
     dockerfilePath: ./ai_service/Dockerfile
-    # Render PORT değişkenini otomatik atar. uvicorn'u 10000'e kilitlendi
-    startCommand: uvicorn main:app --host 0.0.0.0 --port 10000
     envVars:
       - key: PORT
         value: 10000
