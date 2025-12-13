@@ -5,29 +5,58 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-Microservice-009688?style=for-the-badge&logo=fastapi)
 ![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?style=for-the-badge&logo=docker)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-336791?style=for-the-badge&logo=postgresql)
-![CI/CD](https://img.shields.io/badge/GitHub_Actions-CI%2FCD-2088FF?style=for-the-badge&logo=github-actions)
+![Render](https://img.shields.io/badge/Render-Cloud_Deployment-46E3B7?style=for-the-badge&logo=render)
 
 **Yapay Zeka destekli, Mikroservis mimarisine sahip Akıllı Finans Takip API'si.**
 
-Bu proje, kullanıcıların fiş/fatura fotoğraflarını yükleyerek harcamalarını otomatik takip etmelerini sağlar. Kullanıcı bir görsel dosyası yüklediğinde, sistem **Görüntü İşleme (OCR)** ve **Yapay Zeka** servisleri ile analiz yapar; tarih, işyeri adı ve toplam tutarı tespit edip veritabanına kaydeder.
+Bu proje, kullanıcının yüklediği fiş/fatura fotoğraflarını **Görüntü İşleme (OCR)** ve **Yapay Zeka** servisleri ile analiz eder. Tarih, işyeri adı ve toplam tutarı otomatik olarak tespit edip veritabanına kaydeder.
 
 ---
 
 ## 🚀 Canlı Demo (Live Preview)
 
-Projeyi Render üzerinde canlı olarak test edebilirsiniz. Kayıt olmanıza gerek yoktur, hazır demo kullanıcısı tanımlanmıştır.
+Proje Render üzerinde canlı yayındadır. Linke tıkladığınızda doğrudan Swagger API Dokümantasyonuna yönlendirilirsiniz.
 
-🔗 **Canlı Swagger UI:** [https://senin-projen.onrender.com/swagger/](https://senin-projen.onrender.com/swagger/)
+🔗 **Canlı Sistem:** [https://expense-django-render-linkiniz.onrender.com](https://expense-django-render-linkiniz.onrender.com)
+*(Not: Lütfen kendi Render linkinizi buraya yapıştırın)*
 
-### 🔑 Giriş Bilgileri (Demo User)
-Sistemi test etmek için sağ üstteki **Authorize** butonuna tıklayın ve aşağıdaki bilgileri girin:
+> **⚠️ Önemli Not:** Sunucular "Free Tier" (Ücretsiz Plan) olduğu için uyku modunda olabilir. İlk isteğin (Login veya Fiş Yükleme) cevap vermesi **50-60 saniye** sürebilir. Lütfen bekleyiniz.
 
-| Key | Value |
-| --- | --- |
-| **Username** | `demo` |
-| **Password** | `demo123` |
+---
 
-*(Not: Sunucu uyku modunda olabilir, ilk isteğin cevap vermesi 30-40 saniye sürebilir.)*
+## 🔐 Nasıl Test Edilir? (Adım Adım Yetkilendirme)
+
+Sistem güvenliği **JWT (JSON Web Token)** ile sağlanmaktadır. API'yi test etmek için aşağıdaki adımları izleyin:
+
+### 1. Token Alma (Login)
+1.  Swagger arayüzünde **`api`** başlığı altındaki **`/api/token/`** endpoint'ine gidin.
+2.  **"Try it out"** butonuna basın.
+3.  Aşağıdaki **Demo Kullanıcı** bilgilerini girin ve **Execute** deyin:
+    ```json
+    {
+      "username": "demo",
+      "password": "demo123"
+    }
+    ```
+4.  Response body (Yanıt) kısmında gelen **`access`** token değerini (tırnaklar olmadan) kopyalayın.
+
+### 2. Yetkilendirme (Authorize)
+1.  Sayfanın sağ üst köşesindeki yeşil **`Authorize`** butonuna tıklayın.
+2.  Açılan kutuya token'ı şu formatta yapıştırın:
+    
+    `Bearer <KOPYALADIGINIZ_TOKEN>`
+    
+    *(Örnek: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`)*
+    **(Dikkat: "Bearer" kelimesi ile token arasında bir boşluk bırakmayı unutmayın!)**
+
+3.  **Authorize** ve ardından **Close** butonuna basın. Artık kilit simgeleri kilitli (🔒) görünecektir.
+
+### 3. Fiş Yükleme ve AI Analizi 🤖
+1.  **`expenses`** başlığı altındaki **`/expenses/analyze_receipt/`** endpoint'ini açın.
+2.  **"Try it out"** butonuna basın.
+3.  **`receipt_image`** alanından bilgisayarınızdaki bir fiş fotoğrafını seçin.
+4.  **Execute** butonuna basın.
+5.  Sistem fişi işleyecek ve sonucu JSON olarak dönecektir!
 
 ---
 
@@ -37,8 +66,8 @@ Proje, sorumlulukların ayrılması (Separation of Concerns) ilkesine göre **Hi
 
 ```mermaid
 graph LR
-    User(Kullanıcı) -- 1. Upload File (Multipart/Form) --> Django[Django Core API]
-    Django -- 2. Forward File (Bytes) --> FastAPI[FastAPI AI Service]
-    FastAPI -- 3. Image Processing --> Tesseract[OCR Motoru]
+    User(Kullanıcı) -- 1. Upload File (Multipart) --> Django[Django Core API]
+    Django -- 2. Forward File (Internal Network) --> FastAPI[FastAPI AI Service]
+    FastAPI -- 3. Image Processing (OCR) --> Tesseract[Tesseract Engine]
     FastAPI -- 4. Extracted Data (JSON) --> Django
     Django -- 5. Save Expense --> DB[(PostgreSQL)]
