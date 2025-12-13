@@ -31,7 +31,7 @@ class ExpenseViewSet(viewsets.ModelViewSet):
     # İstatistik endpoint'i
     # detail=False: Tekbir ID'ye değil, listenin geneline uygulanır.
     @action(detail=False, methods=['get'])
-    def stats(self, request):
+    def stats(self, request): # Harcamaları istatistik fonksiyonlarından geçirip listeleyen fonksiyon
         engine = ExpenseAnalytics(user=request.user)
         expenses = engine.get_filtered_expense(request.query_params)
         stats = engine.calculate_stats(expenses)
@@ -46,7 +46,6 @@ class ExpenseViewSet(viewsets.ModelViewSet):
     @swagger_auto_schema(operation_description="Rapor oluşturma işlemini başlatır ve görev ID'sini döner.")
     @action(detail=False, methods=['post'])
     def report(self, request):
-        engine = ExpenseAnalytics(user=request.user)
         duration = request.data.get("duration", 10)  # Simülasyon süresi
         task = heavy_process_simulation.delay(duration)
         return Response({
@@ -74,7 +73,7 @@ class ExpenseViewSet(viewsets.ModelViewSet):
     )
     @action(detail=False, methods=['post'])
     def analyze_receipt(self, request):
-        # Artık veriyi serializer üzerinden alıp doğrulayabiliriz (Daha güvenli)
+        # Veriyi serializer üzerinden alıp doğrulama işlemi.
         serializer = ReceiptAnalysisSerializer(data=request.data)
         
         if not serializer.is_valid():
