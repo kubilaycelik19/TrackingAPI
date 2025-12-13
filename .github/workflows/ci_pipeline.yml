@@ -1,40 +1,42 @@
 name: Django CI Pipeline
 
-# Trigger. 'main' branchına her kod gönderildiğinde çalışacak.
-
+# 1. TETİKLEYİCİ (TRIGGER)
+# Bu robot ne zaman çalışsın?
+# 'main' dalına her kod gönderildiğinde (push) veya PR açıldığında.
 on:
   push:
-    branches: ["main"]
+    branches: [ "main" ]
   pull_request:
-    branches: ["main"]
+    branches: [ "main" ]
 
-# Görevler
-
+# 2. GÖREVLER (JOBS)
 jobs:
   build-and-test:
-    runs-on: ubuntu-latest # sanal ortamın işletim sistemi
+    runs-on: ubuntu-latest # Robotun işletim sistemi
 
-    steps: 
-      # Kodu github'dan çek (checkout)
-      -name: Kodu çek
+    steps:
+    # Kodu GitHub'dan çek (Checkout)
+    - name: Kodu Çek
       uses: actions/checkout@v3
 
-      # Python kur
-      -name: Python 3.10 Kur
+    # Python Kur
+    - name: Python 3.10 Kur
       uses: actions/setup-python@v4
       with:
         python-version: '3.10'
 
-      # Kütüphaneleri yükle
-      -name: Gereksinimleri yükle
-      uses: python -m pip install --upgrade pip
-      pip install -r requirements.txt
+    # Kütüphaneleri Yükle
+    - name: Gereksinimleri Yükle
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
 
-      # Testleri çalıştır
-      -name: Testleri Çalıştır
-        env:
-          SECRET_KEY: "django-insecure-7a688+z1zb4^^(hxtywbi+sv=!*(el36xrcy7$nmz&eyw*ktqg" 
-          DEBUG: "True"
-          CELERY_BROKER_URL: "redis://localhost:6379/0"
-        run:
-          python manage.py test
+    # Testleri Çalıştır
+    # Secret Key ve Debug ayarlarını Environment Variable olarak verildi
+    - name: Testleri Koş
+      env:
+        SECRET_KEY: "django-insecure-7a688+z1zb4^^(hxtywbi+sv=!*(el36xrcy7$nmz&eyw*ktqg"
+        DEBUG: "True"
+        CELERY_BROKER_URL: "redis://localhost:6379/0" 
+      run: |
+        python manage.py test
