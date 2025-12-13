@@ -1,28 +1,19 @@
 from rest_framework import serializers
-from rest_framework import request
-from rest_framework import validators
-from .models import Expense
+from .models import Expense, Category
 
-class ExpenseSerializer(serializers.ModelSerializer):
-
-    # user = serializers.PrimaryKeyRelatedField(read_only=True) alternatif
-
+class CategorySerializer(serializers.ModelSerializer):
     class Meta:
-        model = Expense
+        model = Category
         fields = '__all__'
 
-        read_only_fields = ['user']  # 'user' alanı sadece okunabilir olacak
+class ExpenseSerializer(serializers.ModelSerializer):
+    category_name = serializers.CharField(source='category.name', read_only=True)
+    
+    class Meta:
+        model = Expense
+        fields = ['id', 'amount', 'description', 'date', 'category', 'category_name', 'user']
+        read_only_fields = ['user']
 
-    def validate_amount(self, value):
-        """
-        'Amount' icin ozel kontrol.
-        """
-        if value <= 0 :
-            raise serializers.ValidationError("Hatali deger!")
-        else: return value
 
 class ReceiptAnalysisSerializer(serializers.Serializer):
-    image_url = serializers.CharField(required=True, help_text="Analiz edilecek fişin URL'i veya dosya yolu")
-
-
-
+    receipt_image = serializers.ImageField(required=True, help_text="Yüklenecek fiş görseli (JPG/PNG)")

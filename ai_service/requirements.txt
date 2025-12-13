@@ -6,3 +6,4 @@ sqlalchemy
 alembic
 pytesseract
 Pillow
+python-multipart

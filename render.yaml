@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: expense-django
+    runtime: python
+    buildCommand: |
+      pip install -r requirements.txt
+      python manage.py collectstatic --noinput
+      python manage.py migrate
+      python manage.py create_superuser
+    startCommand: gunicorn my_finance_project.wsgi:application --bind 0.0.0.0:$PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.0
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: "*"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: expense-db
+          property: connectionString
+      - key: AI_SERVICE_URL
+        fromService:
+          type: web
+          name: expense-ai-service
+          property: url
+          
+      # --- DEMO KULLANICI BİLGİLERİ ---
+      - key: DJANGO_SUPERUSER_USERNAME
+        value: "demo"
+      - key: DJANGO_SUPERUSER_PASSWORD
+        value: "demo123"
+      - key: DJANGO_SUPERUSER_EMAIL
+        value: "demo@example.com"
